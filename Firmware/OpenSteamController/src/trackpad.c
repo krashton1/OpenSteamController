@@ -1081,7 +1081,8 @@ void trackpadGetLastXY(Trackpad trackpad, uint16_t* xLoc, uint16_t* yLoc) {
 
 	for (int idx = 0; idx < 11; idx++) {
 		int32_t diff = adc_vals_x[idx+1] - adc_vals_x[idx];
-		max_amplitude_x = diff > max_amplitude_x ? diff : max_amplitude_x;
+		int32_t diff_abs = abs(diff);
+		max_amplitude_x = diff_abs > max_amplitude_x ? diff_abs : max_amplitude_x;
 
 		if (transition_state == WAIT_FOR_0_TO_P) {
 			if (diff > 0) {
