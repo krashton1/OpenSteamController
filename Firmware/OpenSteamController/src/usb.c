@@ -1285,8 +1285,9 @@ static void updateReports(void) {
 	controllerUsbData.statusReport.snapshotButton = getLeftGripState();
 	controllerUsbData.statusReport.homeButton = getSteamButtonState();
 
+	controllerUsbData.statusReport.leftAnalogClick = getLeftTrackpadClickState();
 	controllerUsbData.statusReport.rightAnalogClick = getRightTrackpadClickState();
-	controllerUsbData.statusReport.leftAnalogClick = getJoyClickState();
+//	controllerUsbData.statusReport.leftAnalogClick = getJoyClickState();
 	controllerUsbData.statusReport.plusButton = getFrontRightButtonState();
 	controllerUsbData.statusReport.minusButton = getFrontLeftButtonState();
 
@@ -1304,6 +1305,7 @@ static void updateReports(void) {
 	// Default to neutral position
 	controllerUsbData.statusReport.dPad = DPAD_NEUTRAL;
 
+	/*
 	// Have Left Trackpad act as DPAD:
 	// Only check (and convert) finger position to DPAD location on click
 	if (getLeftTrackpadClickState()) {
@@ -1338,6 +1340,14 @@ static void updateReports(void) {
 			}
 		}
 	}
+	*/
+
+	// Have Left Trackpad act as Left Analog:
+	trackpadGetLastXY(L_TRACKPAD, &tpad_x, &tpad_y);
+	controllerUsbData.statusReport.leftAnalogX = convToPowerAJoyPos(tpad_x,
+		0, TPAD_MAX_X/2, TPAD_MAX_X);
+	controllerUsbData.statusReport.leftAnalogY = convToPowerAJoyPos(
+		 TPAD_MAX_Y - tpad_y, 0, TPAD_MAX_Y/2, TPAD_MAX_Y);
 
 	// Have Right Trackpad act as Right Analog:
 	trackpadGetLastXY(R_TRACKPAD, &tpad_x, &tpad_y);
