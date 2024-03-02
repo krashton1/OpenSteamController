@@ -1285,116 +1285,168 @@ static void updateReports(void) {
 //	controllerUsbData.statusReport.snapshotButton = getLeftGripState();
 	controllerUsbData.statusReport.homeButton = getSteamButtonState();
 
-	controllerUsbData.statusReport.leftAnalogClick = getLeftTrackpadClickState();
-	controllerUsbData.statusReport.rightAnalogClick = getRightTrackpadClickState();
+//	controllerUsbData.statusReport.leftAnalogClick = getLeftTrackpadClickState();
+//	controllerUsbData.statusReport.rightAnalogClick = getRightTrackpadClickState();
 //	controllerUsbData.statusReport.leftAnalogClick = getJoyClickState();
 	controllerUsbData.statusReport.plusButton = getFrontRightButtonState();
 	controllerUsbData.statusReport.minusButton = getFrontLeftButtonState();
 
-	// Analog Joystick is Left Analog:
-	/*
-	controllerUsbData.statusReport.leftAnalogX = convToPowerAJoyPos(
-		JOYSTICK_MAX_X-getAdcVal(ADC_JOYSTICK_X), 128, JOYSTICK_MAX_X/2,
-		JOYSTICK_MAX_X);
-	controllerUsbData.statusReport.leftAnalogY = convToPowerAJoyPos(
-		JOYSTICK_MAX_Y-getAdcVal(ADC_JOYSTICK_Y), 128, JOYSTICK_MAX_Y/2,
-		JOYSTICK_MAX_Y);
-		*/
-
 	uint16_t tpad_x = 0;
 	uint16_t tpad_y = 0;
 
-	// Default to neutral position
-//	controllerUsbData.statusReport.dPad = DPAD_NEUTRAL;
+	// If left grip is held, swap left trackpad and joystick
+	bool leftGrip = getLeftGripState();
 
-	// Have Left Analog act as DPAD:
-	controllerUsbData.statusReport.dPad = DPAD_NEUTRAL;
-	int16_t joy_x = JOYSTICK_MAX_X - getAdcVal(ADC_JOYSTICK_X) - JOYSTICK_MAX_X/2;
-	int16_t joy_y = JOYSTICK_MAX_Y - getAdcVal(ADC_JOYSTICK_Y) - JOYSTICK_MAX_Y/2;
-	if (abs(joy_x) == abs(joy_y))
+	// If right grip is held, swap right trackpad and joystick
+	bool rightGrip = getRightGripState();
+
+	// If both grips held, snapshot
+	controllerUsbData.statusReport.snapshotButton = getLeftGripState() && getRightGripState();
+
+	if (leftGrip == rightGrip)
 	{
+		// Have joystick act as DPAD:
 		controllerUsbData.statusReport.dPad = DPAD_NEUTRAL;
-	}
-	else if(abs(joy_x) > abs(joy_y) && abs(joy_x) > JOYSTICK_MAX_X/4)
-	{
-		if(joy_x > 0)
+		int16_t joy_x = JOYSTICK_MAX_X - getAdcVal(ADC_JOYSTICK_X) - JOYSTICK_MAX_X/2;
+		int16_t joy_y = JOYSTICK_MAX_Y - getAdcVal(ADC_JOYSTICK_Y) - JOYSTICK_MAX_Y/2;
+		if (abs(joy_x) == abs(joy_y))
 		{
-			controllerUsbData.statusReport.dPad = DPAD_RIGHT;
+			controllerUsbData.statusReport.dPad = DPAD_NEUTRAL;
 		}
-		else if(joy_x < 0)
+		else if(abs(joy_x) > abs(joy_y) && abs(joy_x) > JOYSTICK_MAX_X/8)
 		{
-			controllerUsbData.statusReport.dPad = DPAD_LEFT;
+			if(joy_x > 0)
+			{
+				controllerUsbData.statusReport.dPad = DPAD_RIGHT;
+			}
+			else if(joy_x < 0)
+			{
+				controllerUsbData.statusReport.dPad = DPAD_LEFT;
+			}
 		}
-	}
-	else if(abs(joy_y) > abs(joy_x) && abs(joy_y) > JOYSTICK_MAX_Y/4)
-	{
-		if(joy_y > 0)
+		else if(abs(joy_y) > abs(joy_x) && abs(joy_y) > JOYSTICK_MAX_Y/8)
 		{
-			controllerUsbData.statusReport.dPad = DPAD_DOWN;
-		}
-		else if(joy_y < 0)
-		{
-			controllerUsbData.statusReport.dPad = DPAD_UP;
-		}
-	}
-
-
-	/*
-	// Have Left Trackpad act as DPAD:
-	// Only check (and convert) finger position to DPAD location on click
-	if (getLeftTrackpadClickState()) {
-
-		trackpadGetLastXY(L_TRACKPAD, &tpad_x, &tpad_y);
-
-		if (tpad_x > TPAD_MAX_X * 3/8 && tpad_x < TPAD_MAX_X * 5/8) {
-			if (tpad_y > TPAD_MAX_Y * 3/8 && tpad_y < TPAD_MAX_Y * 5/8) {
-				controllerUsbData.statusReport.dPad = DPAD_NEUTRAL;
-			} else if (tpad_y <= TPAD_MAX_Y * 3/8) {
+			if(joy_y > 0)
+			{
 				controllerUsbData.statusReport.dPad = DPAD_DOWN;
-			} else {
+			}
+			else if(joy_y < 0)
+			{
 				controllerUsbData.statusReport.dPad = DPAD_UP;
 			}
-		} else if (tpad_x <= TPAD_MAX_X * 3/8) {
-			// Put more emphasis into cardinal directions
-			if (tpad_y > TPAD_MAX_Y * 2/8 && tpad_y < TPAD_MAX_Y * 6/8) {
-				controllerUsbData.statusReport.dPad = DPAD_LEFT;
-			} else if (tpad_y <= TPAD_MAX_Y * 2/8) {
-				controllerUsbData.statusReport.dPad = DPAD_DOWN_LEFT;
-			} else {
-				controllerUsbData.statusReport.dPad = DPAD_UP_LEFT;
+		}
+	}
+	else if(leftGrip)
+	{
+		// joystick is Left Analog:
+		controllerUsbData.statusReport.leftAnalogClick = getJoyClickState();
+		controllerUsbData.statusReport.leftAnalogX = convToPowerAJoyPos(
+			JOYSTICK_MAX_X-getAdcVal(ADC_JOYSTICK_X), 128, JOYSTICK_MAX_X/2,
+			JOYSTICK_MAX_X);
+		controllerUsbData.statusReport.leftAnalogY = convToPowerAJoyPos(
+			JOYSTICK_MAX_Y-getAdcVal(ADC_JOYSTICK_Y), 128, JOYSTICK_MAX_Y/2,
+			JOYSTICK_MAX_Y);
+	}
+	else if(rightGrip)
+	{
+		// joystick is Right Analog:
+		controllerUsbData.statusReport.rightAnalogClick = getJoyClickState();
+		controllerUsbData.statusReport.rightAnalogX = convToPowerAJoyPos(
+			JOYSTICK_MAX_X-getAdcVal(ADC_JOYSTICK_X), 128, JOYSTICK_MAX_X/2,
+			JOYSTICK_MAX_X);
+		controllerUsbData.statusReport.rightAnalogY = convToPowerAJoyPos(
+			JOYSTICK_MAX_Y-getAdcVal(ADC_JOYSTICK_Y), 128, JOYSTICK_MAX_Y/2,
+			JOYSTICK_MAX_Y);
+	}
+
+	// Have Left Trackpad act as Left Analog or dpad
+	if(!leftGrip || (leftGrip && rightGrip))
+	{
+		// analog if grip isnt held
+		controllerUsbData.statusReport.leftAnalogClick = getLeftTrackpadClickState();
+		trackpadGetLastXY(L_TRACKPAD, &tpad_x, &tpad_y);
+		controllerUsbData.statusReport.leftAnalogX = convToPowerAJoyPos(tpad_x,
+			0, TPAD_MAX_X/2, TPAD_MAX_X);
+		controllerUsbData.statusReport.leftAnalogY = convToPowerAJoyPos(
+			 TPAD_MAX_Y - tpad_y, 0, TPAD_MAX_Y/2, TPAD_MAX_Y);
+	}
+	else
+	{
+		// dpad if grip is held
+		// Only check (and convert) finger position to DPAD location on click
+		if (getLeftTrackpadClickState()) {
+
+			trackpadGetLastXY(L_TRACKPAD, &tpad_x, &tpad_y);
+
+			if (tpad_x > TPAD_MAX_X * 3/8 && tpad_x < TPAD_MAX_X * 5/8)
+			{
+				if (tpad_y > TPAD_MAX_Y * 3/8 && tpad_y < TPAD_MAX_Y * 5/8)
+				{
+					controllerUsbData.statusReport.dPad = DPAD_NEUTRAL;
+				}
+				else if (tpad_y <= TPAD_MAX_Y * 3/8)
+				{
+					controllerUsbData.statusReport.dPad = DPAD_DOWN;
+				}
+				else
+				{
+					controllerUsbData.statusReport.dPad = DPAD_UP;
+				}
 			}
-		} else {
-			// Put more emphasis into cardinal directions
-			if (tpad_y > TPAD_MAX_Y * 2/8 && tpad_y < TPAD_MAX_Y * 6/8) {
+			else if (tpad_x <= TPAD_MAX_X * 3/8)
+			{
+				controllerUsbData.statusReport.dPad = DPAD_LEFT;
+			}
+			else
+			{
 				controllerUsbData.statusReport.dPad = DPAD_RIGHT;
-			} else if (tpad_y <= TPAD_MAX_Y * 2/8) {
-				controllerUsbData.statusReport.dPad = DPAD_DOWN_RIGHT;
-			} else {
-				controllerUsbData.statusReport.dPad = DPAD_UP_RIGHT;
 			}
 		}
 	}
-	*/
 
-	// Have Left Trackpad act as Left Analog:
-	trackpadGetLastXY(L_TRACKPAD, &tpad_x, &tpad_y);
-	controllerUsbData.statusReport.leftAnalogX = convToPowerAJoyPos(tpad_x,
-		0, TPAD_MAX_X/2, TPAD_MAX_X);
-	controllerUsbData.statusReport.leftAnalogY = convToPowerAJoyPos(
-		 TPAD_MAX_Y - tpad_y, 0, TPAD_MAX_Y/2, TPAD_MAX_Y);
-
-	// Have Right Trackpad act as Right Analog:
-	trackpadGetLastXY(R_TRACKPAD, &tpad_x, &tpad_y);
-	controllerUsbData.statusReport.rightAnalogX = convToPowerAJoyPos(tpad_x, 
-		0, TPAD_MAX_X/2, TPAD_MAX_X);
-	controllerUsbData.statusReport.rightAnalogY = convToPowerAJoyPos(
-		 TPAD_MAX_Y - tpad_y, 0, TPAD_MAX_Y/2, TPAD_MAX_Y);
-
-
-	// If both grip buttons are pressed, turn off controller
-	if (getLeftGripState() && getRightGripState())
+	// Have right Trackpad act as right Analog or dpad
+	if(!rightGrip || (leftGrip && rightGrip))
 	{
-		RUN_MAIN_LOOP = false;
+		// analog if grip isnt held
+		controllerUsbData.statusReport.rightAnalogClick = getRightTrackpadClickState();
+		trackpadGetLastXY(R_TRACKPAD, &tpad_x, &tpad_y);
+		controllerUsbData.statusReport.rightAnalogX = convToPowerAJoyPos(tpad_x,
+			0, TPAD_MAX_X/2, TPAD_MAX_X);
+		controllerUsbData.statusReport.rightAnalogY = convToPowerAJoyPos(
+			 TPAD_MAX_Y - tpad_y, 0, TPAD_MAX_Y/2, TPAD_MAX_Y);
+	}
+	else
+	{
+		// dpad if grip is held
+		// Only check (and convert) finger position to DPAD location on click
+		if (getRightTrackpadClickState()) {
+
+			trackpadGetLastXY(R_TRACKPAD, &tpad_x, &tpad_y);
+
+			if (tpad_x > TPAD_MAX_X * 3/8 && tpad_x < TPAD_MAX_X * 5/8)
+			{
+				if (tpad_y > TPAD_MAX_Y * 3/8 && tpad_y < TPAD_MAX_Y * 5/8)
+				{
+					controllerUsbData.statusReport.dPad = DPAD_NEUTRAL;
+				}
+				else if (tpad_y <= TPAD_MAX_Y * 3/8)
+				{
+					controllerUsbData.statusReport.dPad = DPAD_DOWN;
+				}
+				else
+				{
+					controllerUsbData.statusReport.dPad = DPAD_UP;
+				}
+			}
+			else if (tpad_x <= TPAD_MAX_X * 3/8)
+			{
+				controllerUsbData.statusReport.dPad = DPAD_LEFT;
+			}
+			else
+			{
+				controllerUsbData.statusReport.dPad = DPAD_RIGHT;
+			}
+		}
 	}
 }
 
