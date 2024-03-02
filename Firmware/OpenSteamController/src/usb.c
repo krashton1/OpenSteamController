@@ -1292,18 +1292,52 @@ static void updateReports(void) {
 	controllerUsbData.statusReport.minusButton = getFrontLeftButtonState();
 
 	// Analog Joystick is Left Analog:
+	/*
 	controllerUsbData.statusReport.leftAnalogX = convToPowerAJoyPos(
 		JOYSTICK_MAX_X-getAdcVal(ADC_JOYSTICK_X), 128, JOYSTICK_MAX_X/2,
 		JOYSTICK_MAX_X);
 	controllerUsbData.statusReport.leftAnalogY = convToPowerAJoyPos(
 		JOYSTICK_MAX_Y-getAdcVal(ADC_JOYSTICK_Y), 128, JOYSTICK_MAX_Y/2,
 		JOYSTICK_MAX_Y);
+		*/
 
 	uint16_t tpad_x = 0;
 	uint16_t tpad_y = 0;
 
 	// Default to neutral position
+//	controllerUsbData.statusReport.dPad = DPAD_NEUTRAL;
+
+	// Have Left Analog act as DPAD:
 	controllerUsbData.statusReport.dPad = DPAD_NEUTRAL;
+	int16_t joy_x = JOYSTICK_MAX_X - getAdcVal(ADC_JOYSTICK_X) - JOYSTICK_MAX_X/2;
+	int16_t joy_y = JOYSTICK_MAX_Y - getAdcVal(ADC_JOYSTICK_Y) - JOYSTICK_MAX_Y/2;
+	if (abs(joy_x) == abs(joy_y))
+	{
+		controllerUsbData.statusReport.dPad = DPAD_NEUTRAL;
+	}
+	else if(abs(joy_x) > abs(joy_y) && abs(joy_x) > JOYSTICK_MAX_X/4)
+	{
+		if(joy_x > 0)
+		{
+			controllerUsbData.statusReport.dPad = DPAD_RIGHT;
+		}
+		else if(joy_x < 0)
+		{
+			controllerUsbData.statusReport.dPad = DPAD_LEFT;
+		}
+	}
+	else if(abs(joy_y) > abs(joy_x) && abs(joy_y) > JOYSTICK_MAX_Y/4)
+	{
+		if(joy_y > 0)
+		{
+			controllerUsbData.statusReport.dPad = DPAD_DOWN;
+		}
+		else if(joy_y < 0)
+		{
+			controllerUsbData.statusReport.dPad = DPAD_UP;
+		}
+	}
+
 
 	/*
 	// Have Left Trackpad act as DPAD:
