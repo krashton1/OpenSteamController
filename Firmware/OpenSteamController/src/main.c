@@ -37,7 +37,7 @@
 #include <stdint.h>
 
 #include "chip.h"
-
+#include "globals.h"
 #include "init.h"
 #include "eeprom_access.h"
 #include "console.h"
@@ -104,6 +104,17 @@ int main(void){
 		updateControllerStatusPacket();
 		// Sleep until next IRQ happens
 		__WFI();
+
+		// Check state of PIO0_3 (USB voltage detected)
+		uint8_t usb_volt_detect = Chip_GPIO_ReadPortBit(LPC_GPIO, 0 , 3);
+
+		// Switch "leaves" controller on when unplugged, If USB voltage isnt detected, turn off controller
+		if (!usb_volt_detect)
+		{
+			// Disable battery power if USB voltage is not present
+			Chip_GPIO_WritePortBit(LPC_GPIO, 1, 10, true);
+		}
+
 	}
 #endif
 

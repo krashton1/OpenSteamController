@@ -42,13 +42,13 @@
 //TODO: straighten out weird circular includes? We cannot include usbd/usbd_core.h, even though that's what we want at this point...
 //#include "usbd/usbd_core.h"
 #include "app_usbd_cfg.h"
-
 #include "chip.h"
 
 #include "led_ctrl.h"
 
 #include <string.h>
 #include <stdio.h>
+#include "globals.c"
 
 #if (__REDLIB_INTERFACE_VERSION__ >= 20000)
 /* We are using new Redlib_v2 semihosting interface */
@@ -1282,7 +1282,7 @@ static void updateReports(void) {
 	controllerUsbData.statusReport.bButton = getAButtonState();
 	controllerUsbData.statusReport.yButton = getXButtonState();
 
-	controllerUsbData.statusReport.snapshotButton = getLeftGripState();
+//	controllerUsbData.statusReport.snapshotButton = getLeftGripState();
 	controllerUsbData.statusReport.homeButton = getSteamButtonState();
 
 	controllerUsbData.statusReport.leftAnalogClick = getLeftTrackpadClickState();
@@ -1389,6 +1389,13 @@ static void updateReports(void) {
 		0, TPAD_MAX_X/2, TPAD_MAX_X);
 	controllerUsbData.statusReport.rightAnalogY = convToPowerAJoyPos(
 		 TPAD_MAX_Y - tpad_y, 0, TPAD_MAX_Y/2, TPAD_MAX_Y);
+
+
+	// If both grip buttons are pressed, turn off controller
+	if (getLeftGripState() && getRightGripState())
+	{
+		RUN_MAIN_LOOP = false;
+	}
 }
 
 /**
