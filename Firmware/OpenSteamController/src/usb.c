@@ -49,6 +49,8 @@
 #include <string.h>
 #include <stdio.h>
 #include "globals.c"
+#include <math.h>
+#define PI 3.141592654
 
 #if (__REDLIB_INTERFACE_VERSION__ >= 20000)
 /* We are using new Redlib_v2 semihosting interface */
@@ -1365,6 +1367,7 @@ static void updateReports(void) {
 		// analog if grip isnt held
 		controllerUsbData.statusReport.leftAnalogClick = getLeftTrackpadClickState();
 		trackpadGetLastXY(L_TRACKPAD, &tpad_x, &tpad_y);
+		rotateCoords(&tpad_x, &tpad_y, -15);
 		controllerUsbData.statusReport.leftAnalogX = convToPowerAJoyPos(tpad_x,
 			0, TPAD_MAX_X/2, TPAD_MAX_X);
 		controllerUsbData.statusReport.leftAnalogY = convToPowerAJoyPos(
@@ -1374,10 +1377,9 @@ static void updateReports(void) {
 	{
 		// dpad if grip is held
 		// Only check (and convert) finger position to DPAD location on click
-		if (getLeftTrackpadClickState()) {
-
+		if (getLeftTrackpadClickState())
+		{
 			trackpadGetLastXY(L_TRACKPAD, &tpad_x, &tpad_y);
-
 			if (tpad_x > TPAD_MAX_X * 3/8 && tpad_x < TPAD_MAX_X * 5/8)
 			{
 				if (tpad_y > TPAD_MAX_Y * 3/8 && tpad_y < TPAD_MAX_Y * 5/8)
@@ -1401,6 +1403,10 @@ static void updateReports(void) {
 			{
 				controllerUsbData.statusReport.dPad = DPAD_RIGHT;
 			}
+		}
+		else
+		{
+			controllerUsbData.statusReport.dPad = DPAD_NEUTRAL;
 		}
 	}
 
@@ -1410,6 +1416,7 @@ static void updateReports(void) {
 		// analog if grip isnt held
 		controllerUsbData.statusReport.rightAnalogClick = getRightTrackpadClickState();
 		trackpadGetLastXY(R_TRACKPAD, &tpad_x, &tpad_y);
+		rotateCoords(&tpad_x, &tpad_y, 15);
 		controllerUsbData.statusReport.rightAnalogX = convToPowerAJoyPos(tpad_x,
 			0, TPAD_MAX_X/2, TPAD_MAX_X);
 		controllerUsbData.statusReport.rightAnalogY = convToPowerAJoyPos(
@@ -1419,10 +1426,9 @@ static void updateReports(void) {
 	{
 		// dpad if grip is held
 		// Only check (and convert) finger position to DPAD location on click
-		if (getRightTrackpadClickState()) {
-
+		if (getRightTrackpadClickState())
+		{
 			trackpadGetLastXY(R_TRACKPAD, &tpad_x, &tpad_y);
-
 			if (tpad_x > TPAD_MAX_X * 3/8 && tpad_x < TPAD_MAX_X * 5/8)
 			{
 				if (tpad_y > TPAD_MAX_Y * 3/8 && tpad_y < TPAD_MAX_Y * 5/8)
@@ -1447,8 +1453,184 @@ static void updateReports(void) {
 				controllerUsbData.statusReport.dPad = DPAD_RIGHT;
 			}
 		}
+		else
+		{
+			controllerUsbData.statusReport.dPad = DPAD_NEUTRAL;
+		}
 	}
 }
+
+
+/**
+ * Convert coordinates into a rotated coordinate.
+ * This takes multiple rotate coords in order to align each axis to where it should be.
+ * It is not easy to understand, but if you use the controller in hand, you may noticed that
+ * some cardinal directions are axis aligned, but some are off. Each cardinal axis therefore
+ * needs its own rotation angle in order to align it correctly
+ *
+ * \param[out] xLoc X location. 0-1200. 0 is left side of Trackpad. 1200/2 will
+ *	be returned if finger is not down.
+ * \param[out] yLoc y location. 0-700. 0 is bottom side of Trackpad. 700/2 will
+ *	be returned if finger is not down.
+ *	\param Some angle to rotate the xLoc and yLoc by
+ *
+ * \return None.
+ */
+void rotateCoords(uint16_t* xLoc, uint16_t* yLoc, int32_t rotAngle)
+{
+	int32_t xOrig = (*xLoc - (1200.0 / 2.0)) * 7.0;
+	int32_t yOrig = (*yLoc - (700.0 / 2.0)) * 12.0;
+	if (xOrig == 0 && yOrig == 0)
+	{
+		return;
+	}
+
+	float rotAngleRad = rotAngle * (PI / 180);
+
+	int32_t xRot = xOrig * cos(rotAngleRad) - yOrig * sin(rotAngleRad);
+	int32_t yRot = xOrig * sin(rotAngleRad) + yOrig * cos(rotAngleRad);
+
+	*xLoc = (xRot / 7.0 + (1200.0 / 2.0));
+	*yLoc = (yRot / 12.0 + (700.0 / 2.0));
+
+}
+
+
+/**
+ * Convert coordinates into a rotated coordinate.
+ * This takes multiple rotate coords in order to align each axis to where it should be.
+ * It is not easy to understand, but if you use the controller in hand, you may noticed that
+ * some cardinal directions are axis aligned, but some are off. Each cardinal axis therefore
+ * needs its own rotation angle in order to align it correctly
+ *
+ * \param[out] xLoc X location. 0-1200. 0 is left side of Trackpad. 1200/2 will
+ *	be returned if finger is not down.
+ * \param[out] yLoc y location. 0-700. 0 is bottom side of Trackpad. 700/2 will
+ *	be returned if finger is not down.
+ *	\param Some angle to rotate the xLoc and yLoc by nearing the up cardinal direction
+ *	\param Some angle to rotate the xLoc and yLoc by nearing the right cardinal direction
+ *	\param Some angle to rotate the xLoc and yLoc by nearing the down cardinal direction
+ *	\param Some angle to rotate the xLoc and yLoc by nearing the left cardinal direction
+ *
+ * \return None.
+ */
+void interpolateCoords(uint16_t* xLoc, uint16_t* yLoc, int32_t leftRot, int32_t downRot, int32_t rightRot, int32_t upRot)
+{
+	// Not really working right now, maybe come back to this func later...
+//	int32_t xOrig = (*xLoc - (1200.0/2)) * 7.0;
+//	int32_t yOrig = (*yLoc - (700.0/2)) * 12.0;
+//	if (xOrig == 0 && yOrig == 0)
+//	{
+//		return;
+//	}
+//	int32_t angle = atan2(yOrig, xOrig) * (180.0 / PI);
+//	int32_t rotAngle = 0;
+//	int32_t closeRatio = 0;
+//	int32_t farRatio = 0;
+//
+//	int32_t leftAxis = fmod((90 - leftRot) + 360, 360);
+//	int32_t downAxis = fmod((0 - downRot) + 360, 360);
+//	int32_t rightAxis = fmod((270 - rightRot) + 360, 360);
+//	int32_t upAxis = fmod((180 - upRot) + 360, 360);
+//
+//
+//	int32_t leftDiff = fmod(abs(leftAxis - angle) + 360, 360);
+//	int32_t downDiff = fmod(abs(downAxis - angle) + 360, 360);
+//	int32_t rightDiff = fmod(abs(rightAxis - angle) + 360, 360);
+//	int32_t upDiff = fmod(abs(upAxis - angle) + 360, 360);
+//
+//	if (upDiff < rightDiff && upDiff < downDiff && upDiff < leftDiff)
+//	{
+//		// Up axis is closest
+//		controllerUsbData.statusReport.yButton = true;
+//		if (rightDiff < leftDiff)
+//		{
+//			controllerUsbData.statusReport.plusButton = true;
+//			closeRatio = rightDiff / (upDiff + rightDiff);
+//			farRatio = 1 - closeRatio;
+//			rotAngle = upRot * closeRatio + rightRot * farRatio;
+//		}
+//		else
+//		{
+//			controllerUsbData.statusReport.minusButton = true;
+//			closeRatio = leftDiff / (upDiff + leftDiff);
+//			farRatio = 1 - closeRatio;
+//			rotAngle = upRot * closeRatio + leftRot * farRatio;
+//		}
+//
+//	}
+//	else if (rightDiff < downDiff && rightDiff < leftDiff)
+//	{
+//		// Right axis is closest
+//		controllerUsbData.statusReport.bButton = true;
+//		if (upDiff < downDiff)
+//		{
+//			controllerUsbData.statusReport.plusButton = true;
+//			closeRatio = upDiff / (upDiff + rightDiff);
+//			farRatio = 1 - closeRatio;
+//			rotAngle = rightRot * closeRatio + upRot * farRatio;
+//		}
+//		else
+//		{
+//			controllerUsbData.statusReport.minusButton = true;
+//			closeRatio = downDiff / (downDiff + rightDiff);
+//			farRatio = 1 - closeRatio;
+//			rotAngle = rightRot * closeRatio + downRot * farRatio;
+//		}
+//	}
+//	else if(downDiff < leftDiff)
+//	{
+//		// Down axis is closest
+//		controllerUsbData.statusReport.aButton = true;
+//		if (rightDiff < leftDiff)
+//		{
+//			controllerUsbData.statusReport.plusButton = true;
+//			closeRatio = rightDiff / (downDiff + rightDiff);
+//			farRatio = 1 - closeRatio;
+//			rotAngle = downRot * closeRatio + rightRot * farRatio;
+//		}
+//		else
+//		{
+//			controllerUsbData.statusReport.minusButton = true;
+//			closeRatio = leftDiff / (downDiff + leftDiff);
+//			farRatio = 1 - closeRatio;
+//			rotAngle = downRot * closeRatio + leftRot * farRatio;
+//		}
+//
+//	}
+//	else
+//	{
+//		// Left axis is closest
+//		controllerUsbData.statusReport.xButton = true;
+//		if (upDiff < downDiff)
+//		{
+//			controllerUsbData.statusReport.plusButton = true;
+//			closeRatio = upDiff / (upDiff + leftDiff);
+//			farRatio = 1 - closeRatio;
+//			rotAngle = leftRot * closeRatio + upRot * farRatio;
+//		}
+//		else
+//		{
+//			controllerUsbData.statusReport.minusButton = true;
+//			closeRatio = downDiff / (downDiff + leftDiff);
+//			farRatio = 1 - closeRatio;
+//			rotAngle = leftRot * closeRatio + downRot * farRatio;
+//		}
+//
+//	}
+//
+//
+//
+//
+//	float rotAngleRad = rotAngle * (PI / 180);
+//
+//	int32_t xRot = xOrig * cos(rotAngleRad) - yOrig * sin(rotAngleRad);
+//	int32_t yRot = xOrig * sin(rotAngleRad) + yOrig * cos(rotAngleRad);
+//
+//	*xLoc = (xRot / 7.0 + (1200.0/2));
+//	*yLoc = (yRot / 12.0 + (700.0/2));
+}
+
 
 /**
  * HID Get Report Request Callback. Called automatically on HID Get Report Request 
