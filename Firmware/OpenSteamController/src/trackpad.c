@@ -1148,7 +1148,7 @@ void trackpadGetLastXY(Trackpad trackpad, uint16_t* xLoc, uint16_t* yLoc) {
 	//   touching) the trackpad will register.
 	// - If this threshold is too high, then only heavier touches will
 	//   register.
-	const int FINGER_DOWN_REQUIRED_AMPLITUDE = 512;
+	const int FINGER_DOWN_REQUIRED_AMPLITUDE = 750;
 
 	// Early exit if no finger down detected in X position calculation
 	if (x_pos < 0 || max_amplitude_x < FINGER_DOWN_REQUIRED_AMPLITUDE) {
