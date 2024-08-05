@@ -3,6 +3,7 @@
 	<name>OpenSteamController</name>
 	<comment></comment>
 	<projects>
+		<project>lpc_chip_11uxx_lib</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
