@@ -1369,9 +1369,9 @@ static void updateReports(void) {
 		trackpadGetLastXY(L_TRACKPAD, &tpad_x, &tpad_y);
 		rotateCoords(&tpad_x, &tpad_y, -15);
 		controllerUsbData.statusReport.leftAnalogX = convToPowerAJoyPos(tpad_x,
-			0, TPAD_MAX_X/2, TPAD_MAX_X);
+			128, TPAD_MAX_X/2, TPAD_MAX_X);
 		controllerUsbData.statusReport.leftAnalogY = convToPowerAJoyPos(
-			 TPAD_MAX_Y - tpad_y, 0, TPAD_MAX_Y/2, TPAD_MAX_Y);
+			 TPAD_MAX_Y - tpad_y, 128, TPAD_MAX_Y/2, TPAD_MAX_Y);
 	}
 	else
 	{
@@ -1418,9 +1418,9 @@ static void updateReports(void) {
 		trackpadGetLastXY(R_TRACKPAD, &tpad_x, &tpad_y);
 		rotateCoords(&tpad_x, &tpad_y, 15);
 		controllerUsbData.statusReport.rightAnalogX = convToPowerAJoyPos(tpad_x,
-			0, TPAD_MAX_X/2, TPAD_MAX_X);
+			128, TPAD_MAX_X/2, TPAD_MAX_X);
 		controllerUsbData.statusReport.rightAnalogY = convToPowerAJoyPos(
-			 TPAD_MAX_Y - tpad_y, 0, TPAD_MAX_Y/2, TPAD_MAX_Y);
+			 TPAD_MAX_Y - tpad_y, 128, TPAD_MAX_Y/2, TPAD_MAX_Y);
 	}
 	else
 	{
