@@ -39,6 +39,8 @@ void usb_putb(const char* buff, uint32_t len);
 int usb_tstc(void);
 int usb_getc(void);
 
+
+
 #if (FIRMWARE_BEHAVIOR == SWITCH_WIRED_POWERA_FW)
 void updateControllerStatusPacket(void);
 #endif

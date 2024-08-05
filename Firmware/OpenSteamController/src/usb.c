@@ -52,6 +52,9 @@
 #include <math.h>
 #define PI 3.141592654
 
+
+static int controllerConfigMode = 0; // Controller has multiple toggleable configs
+
 #if (__REDLIB_INTERFACE_VERSION__ >= 20000)
 /* We are using new Redlib_v2 semihosting interface */
 	#define WRITEFUNC __sys_write
@@ -144,6 +147,7 @@ static const uint32_t USB_UART_RXFIFO_SZ = 256; //!< Number of bytes in rxFifo.
 
 static UsbUartData usbUartData; //!< Virtual Comm port control data 
 	//!< instance. 
+
 
 /**
  * USB Standard Device Descriptor
@@ -1284,12 +1288,7 @@ static void updateReports(void) {
 	controllerUsbData.statusReport.bButton = getAButtonState();
 	controllerUsbData.statusReport.yButton = getXButtonState();
 
-//	controllerUsbData.statusReport.snapshotButton = getLeftGripState();
 	controllerUsbData.statusReport.homeButton = getSteamButtonState();
-
-//	controllerUsbData.statusReport.leftAnalogClick = getLeftTrackpadClickState();
-//	controllerUsbData.statusReport.rightAnalogClick = getRightTrackpadClickState();
-//	controllerUsbData.statusReport.leftAnalogClick = getJoyClickState();
 	controllerUsbData.statusReport.plusButton = getFrontRightButtonState();
 	controllerUsbData.statusReport.minusButton = getFrontLeftButtonState();
 
@@ -1303,9 +1302,60 @@ static void updateReports(void) {
 	bool rightGrip = getRightGripState();
 
 	// If both grips held, snapshot
-	controllerUsbData.statusReport.snapshotButton = getLeftGripState() && getRightGripState();
+	//controllerUsbData.statusReport.snapshotButton = getLeftGripState() && getRightGripState();
 
-	if (leftGrip == rightGrip)
+	// Different controller configs, adjusts sensitivity of touchpads
+	if (leftGrip && rightGrip && getRightTriggerState() && getLeftTriggerState())
+	{
+		if (getAButtonState())
+		{
+			// config 0
+			// normal linear sensitivity
+			controllerConfigMode = 0;
+		}
+		else if (getBButtonState())
+		{
+			// config 1
+			// high sensitivity
+			controllerConfigMode = 1;
+		}
+		else if (getYButtonState())
+		{
+			// config 2
+			// low sensitivity
+			controllerConfigMode = 2;
+		}
+		else if (getXButtonState())
+		{
+			// config 3
+			// joystick and dpad are not swapped
+			controllerConfigMode = 3;
+		}
+	}
+
+	// What size the active zone on the touchpad is, the larger the number, the bigger the "deadzone" on outside of trackpad. default is 2
+	float touchpadActiveZone = 2;
+	bool swapLeftJoystick = true;
+
+	switch(controllerConfigMode)
+	{
+	case 0:
+		touchpadActiveZone = 2.5;
+		break;
+	case 1:
+		touchpadActiveZone = 4.0;
+		break;
+	case 2:
+		touchpadActiveZone = 1.5;
+		break;
+	case 3:
+		swapLeftJoystick = false;
+		break;
+	default:
+		break;
+	}
+
+	if (leftGrip == rightGrip && swapLeftJoystick)
 	{
 		// Have joystick act as DPAD:
 		controllerUsbData.statusReport.dPad = DPAD_NEUTRAL;
@@ -1338,7 +1388,7 @@ static void updateReports(void) {
 			}
 		}
 	}
-	else if(leftGrip)
+	else if(leftGrip || !swapLeftJoystick)
 	{
 		// joystick is Left Analog:
 		controllerUsbData.statusReport.leftAnalogClick = getJoyClickState();
@@ -1362,22 +1412,22 @@ static void updateReports(void) {
 	}
 
 	// Have Left Trackpad act as Left Analog or dpad
-	if(!leftGrip || (leftGrip && rightGrip))
+	if((!leftGrip || (leftGrip && rightGrip)) && (swapLeftJoystick))
 	{
 		// analog if grip isnt held
 		controllerUsbData.statusReport.leftAnalogClick = getLeftTrackpadClickState();
 		trackpadGetLastXY(L_TRACKPAD, &tpad_x, &tpad_y);
 		rotateCoords(&tpad_x, &tpad_y, -15);
 		controllerUsbData.statusReport.leftAnalogX = convToPowerAJoyPos(tpad_x,
-			128, TPAD_MAX_X/2, TPAD_MAX_X);
+			128, TPAD_MAX_X/touchpadActiveZone, TPAD_MAX_X);
 		controllerUsbData.statusReport.leftAnalogY = convToPowerAJoyPos(
-			 TPAD_MAX_Y - tpad_y, 128, TPAD_MAX_Y/2, TPAD_MAX_Y);
+			 TPAD_MAX_Y - tpad_y, 128, TPAD_MAX_Y/touchpadActiveZone, TPAD_MAX_Y);
 	}
 	else
 	{
 		// dpad if grip is held
 		// Only check (and convert) finger position to DPAD location on click
-		if (getLeftTrackpadClickState())
+		if (getLeftTrackpadClickState() || !swapLeftJoystick)
 		{
 			trackpadGetLastXY(L_TRACKPAD, &tpad_x, &tpad_y);
 			if (tpad_x > TPAD_MAX_X * 3/8 && tpad_x < TPAD_MAX_X * 5/8)
@@ -1418,9 +1468,9 @@ static void updateReports(void) {
 		trackpadGetLastXY(R_TRACKPAD, &tpad_x, &tpad_y);
 		rotateCoords(&tpad_x, &tpad_y, 15);
 		controllerUsbData.statusReport.rightAnalogX = convToPowerAJoyPos(tpad_x,
-			128, TPAD_MAX_X/2, TPAD_MAX_X);
+			128, TPAD_MAX_X/touchpadActiveZone, TPAD_MAX_X);
 		controllerUsbData.statusReport.rightAnalogY = convToPowerAJoyPos(
-			 TPAD_MAX_Y - tpad_y, 128, TPAD_MAX_Y/2, TPAD_MAX_Y);
+			 TPAD_MAX_Y - tpad_y, 128, TPAD_MAX_Y/touchpadActiveZone, TPAD_MAX_Y);
 	}
 	else
 	{
@@ -1463,10 +1513,6 @@ static void updateReports(void) {
 
 /**
  * Convert coordinates into a rotated coordinate.
- * This takes multiple rotate coords in order to align each axis to where it should be.
- * It is not easy to understand, but if you use the controller in hand, you may noticed that
- * some cardinal directions are axis aligned, but some are off. Each cardinal axis therefore
- * needs its own rotation angle in order to align it correctly
  *
  * \param[out] xLoc X location. 0-1200. 0 is left side of Trackpad. 1200/2 will
  *	be returned if finger is not down.
@@ -1492,7 +1538,6 @@ void rotateCoords(uint16_t* xLoc, uint16_t* yLoc, int32_t rotAngle)
 
 	*xLoc = (xRot / 7.0 + (1200.0 / 2.0));
 	*yLoc = (yRot / 12.0 + (700.0 / 2.0));
-
 }
 
 
